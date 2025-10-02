@@ -856,9 +856,17 @@ class Deck extends CardContainer {
 	}
 
 	// Draws a card and sends it to the container before adding a card from the container back to the deck.
-	swap(container, card) {
-		container.addCard(this.removeCard(0));
+	swap(container, card, index) {
+		let newCard = this.removeCard(0);
+		if (index !== undefined && container instanceof Hand) {
+			container.cards.splice(index, 0, newCard);
+			container.addCardElement(newCard, index);
+			container.resize();
+		} else {
+			container.addCard(newCard);
+		}
 		this.addCard(card);
+		return newCard;
 	}
 
 	// Override
@@ -1352,7 +1360,13 @@ class Game {
 	async initialRedraw() {
 		for (let i = 0; i < 2; i++)
 			player_op.controller.redraw();
-		await ui.queueCarousel(player_me.hand, 2, async (c, i) => await player_me.deck.swap(c, c.removeCard(i)), c => true, true, true, "Choose up to 2 cards to redraw.");
+		await ui.queueCarousel(player_me.hand, 2, async (c, i) => {
+			await player_me.deck.swap(c, c.removeCard(i), i);
+		}, c => true, true, true, "Choose up to 2 cards to redraw.");
+		player_me.hand.cards.sort(Card.compare);
+		player_me.hand.elem.innerHTML = '';
+		player_me.hand.cards.forEach((card, i) => player_me.hand.addCardElement(card, i));
+		player_me.hand.resize();
 		ui.enablePlayer(false);
 		game.startRound();
 	}
