@@ -187,8 +187,12 @@ var ability_dict = {
 	},
 	foltest_lord: {
 		description: "Clear any weather effects (resulting from Biting Frost, Torrential Rain or Impenetrable Fog cards) in play.",
+		canActivate: () => Object.values(weather.types).some(t => t.count > 0),
 		activated: async () => await weather.clearWeather(),
-		weight: (card, ai) =>  ai.weightCard( {row:"weather", name:"Clear Weather"} )
+		weight: (card, ai) =>  {
+			const hasActiveWeather = Object.values(weather.types).some(t => t.count > 0);
+			return hasActiveWeather ? ai.weightCard( {row:"weather", name:"Clear Weather"} ) : 0;
+		}
 	},
 	foltest_siegemaster: {
 		description: "Doubles the strength of all your Siege units (unless a Commander's Horn is also present on that row).",
@@ -207,6 +211,7 @@ var ability_dict = {
 	},
 	emhyr_imperial: {
 		description: "Pick a Torrential Rain card from your deck and play it instantly.",
+		canActivate: card => card.holder.deck.findCard(c => c.name === "Torrential Rain") !== undefined,
 		activated: async card => {
 			let out = card.holder.deck.findCard(c => c.name === "Torrential Rain");
 			if (out)
@@ -216,6 +221,7 @@ var ability_dict = {
 	},
 	emhyr_emperor: {
 		description: "Look at 3 random cards from your opponent's hand.",
+		canActivate: card => card.holder.opponent().hand.cards.length > 0,
 		activated: async card => {
 			if (card.holder.controller instanceof ControllerAI)
 				return;
@@ -234,6 +240,7 @@ var ability_dict = {
 	},
 	emhyr_relentless: {
 		description: "Draw a card from your opponent's discard pile.",
+		canActivate: card => card.holder.opponent().grave.findCards(c => c.isUnit()).length > 0,
 		activated: async card => {
 			let grave = board.getRow(card, "grave", card.holder.opponent());
 			if (grave.findCards(c => c.isUnit()).length === 0)
@@ -265,6 +272,7 @@ var ability_dict = {
 	eredin_bringer_of_death: {
 		name: "Eredin : Bringer of Death",
 		description: "Restore a card from your discard pile to your hand.",
+		canActivate: card => card.holder.grave.findCards(c => c.isUnit()).length > 0,
 		activated: async card => {
 			let newCard;
 			if (card.holder.controller instanceof ControllerAI) {
@@ -280,6 +288,7 @@ var ability_dict = {
 	},
 	eredin_destroyer: {
 		description: "Discard 2 card and draw 1 card of your choice from your deck.",
+		canActivate: card => card.holder.hand.cards.length >= 2,
 		activated: async (card) => {
 			let hand = board.getRow(card, "hand", card.holder);
 			let deck = board.getRow(card, "deck", card.holder);
@@ -302,6 +311,7 @@ var ability_dict = {
 	},
 	eredin_king: {
 		description: "Pick any weather card from your deck and play it instantly.",
+		canActivate: card => card.holder.deck.cards.some(c => c.row === "weather"),
 		activated: async card => {
 			let deck = board.getRow(card, "deck", card.holder);
 			if (card.holder.controller instanceof ControllerAI) {
@@ -314,7 +324,7 @@ var ability_dict = {
 		weight: (card, ai, max) => ability_dict["eredin_king"].helper(card).weight,
 		helper: card => {
 			let weather = card.holder.deck.cards.filter(c => c.row === "weather").reduce((a,c) =>a.map(c => c.name).includes(c.name) ? a : a.concat([c]), [] );
-			
+
 			let out, weight = -1;
 			weather.forEach( c => {
 				let w = card.holder.controller.weightWeatherFromDeck(c, c.abilities[0]);
@@ -324,7 +334,7 @@ var ability_dict = {
 				}
 			});
 			return {card: out, weight: weight};
-		}			
+		}
 	},
 	eredin_treacherous: {
 		description: "Doubles the strength of all spy cards (affects both players).",
@@ -350,6 +360,7 @@ var ability_dict = {
 	},
 	francesca_pureblood: {
 		description: "Pick a Biting Frost card from your deck and play it instantly.",
+		canActivate: card => card.holder.deck.findCard(c => c.name === "Biting Frost") !== undefined,
 		activated: async card => {
 			let out = card.holder.deck.findCard(c => c.name === "Biting Frost");
 			if (out)
