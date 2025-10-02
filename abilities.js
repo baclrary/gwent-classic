@@ -139,7 +139,42 @@ var ability_dict = {
 			grave.removeCard(res);
 			grave.addCard(res);
 			await res.animate("medic");
-			await res.autoplay(grave);
+
+			if (res.row === "agile" && !(res.holder.controller instanceof ControllerAI)) {
+				// Put card temporarily in hand for UI system
+				grave.removeCard(res);
+				res.holder.hand.cards.push(res);
+
+				// Override endTurn temporarily to prevent turn from ending
+				let originalEndTurn = res.holder.endTurn;
+				res.holder.endTurn = function() {};
+
+				ui.showPreview(res);
+				ui.enablePlayer(true);
+
+				// Prevent clicking outside, pass button, hand cards, and leader
+				document.getElementById("click-background").classList.add("noclick");
+				document.getElementById("pass-button").classList.add("noclick");
+				res.holder.hand.cards.forEach(c => c.elem.classList.add("noclick"));
+				res.holder.elem_leader.classList.add("noclick");
+
+				await sleepUntil(() => !ui.previewCard, 100);
+
+				// Restore endTurn and re-enable pass button, hand cards, and leader
+				res.holder.endTurn = originalEndTurn;
+				document.getElementById("pass-button").classList.remove("noclick");
+				res.holder.hand.cards.forEach(c => c.elem.classList.remove("noclick"));
+				res.holder.elem_leader.classList.remove("noclick");
+
+				// Card was already removed from hand by selectRow->moveTo, no need to clean up
+			} else if (res.row === "agile") {
+				let closeRow = board.getRow(res, "close", res.holder);
+				let rangedRow = board.getRow(res, "ranged", res.holder);
+				let row = closeRow.calcCardScore(res) >= rangedRow.calcCardScore(res) ? "close" : "ranged";
+				await board.moveTo(res, row, grave);
+			} else {
+				await res.autoplay(grave);
+			}
 		}
 	},
 	morale: {
